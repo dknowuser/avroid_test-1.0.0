@@ -37,6 +37,22 @@ else
 	exit -1;
 fi
 
+# Unprivileged processes should be able to run the script
 fakechroot fakeroot debootstrap --variant=fakechroot bookworm $INSTALL_PATH $MIRROR
+# /etc/apt/sources.list does not contain deb-src entry initially
+echo "deb-src $MIRROR bookworm main" >> $INSTALL_PATH/etc/apt/sources.list
+
+fakechroot fakeroot chroot $INSTALL_PATH /bin/bash <<"EOT"
+apt-get update
+
+apt-get -y install dpkg-dev
+
+cd /home
+mkdir ./temp_build
+cd ./temp_build
+
+apt-get source bash gawk sed firefox-esr
+apt-get -y build-dep bash gawk sed firefox-esr
+EOT
 
 exit 0
