@@ -1,0 +1,13 @@
+Source: avroid-test
+Maintainer: Liliia Marchuk <maro4uk@yandex.ru>
+Section: misc
+Priority: optional
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.0.0
+
+Package: avroid-test
+Architecture: all
+Depends: debootstrap, ${misc:Depends}
+Description: The package debootstraps Debian Bookworm in a specified directory,
+ chroots in the directory, downloads sources of bash, gawk, sed, firefox-esr
+ and builds them with dependencies.
