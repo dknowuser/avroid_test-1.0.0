@@ -43,9 +43,11 @@ fakechroot fakeroot debootstrap --variant=fakechroot bookworm $INSTALL_PATH $MIR
 echo "deb-src $MIRROR bookworm main" >> $INSTALL_PATH/etc/apt/sources.list
 
 fakechroot fakeroot chroot $INSTALL_PATH /bin/bash <<"EOT"
+# Update after modifying /etc/apt/sources.list
 apt-get update
 
-apt-get -y install dpkg-dev
+# Required for apt-get source
+apt-get -y install dpkg-dev devscripts
 
 cd /home
 mkdir ./temp_build
@@ -53,6 +55,19 @@ cd ./temp_build
 
 apt-get source bash gawk sed firefox-esr
 apt-get -y build-dep bash gawk sed firefox-esr
+
+# Build packages
+cd ./bash-*
+dpkg-buildpackage -b -uc -us &
+
+cd ../gawk-*
+dpkg-buildpackage -b -uc -us &
+
+cd ../sed-*
+dpkg-buildpackage -b -uc -us &
+
+cd ../firefox-esr-*
+dpkg-buildpackage -b -uc -us &
 EOT
 
 exit 0
