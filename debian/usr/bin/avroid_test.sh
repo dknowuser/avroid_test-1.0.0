@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-UNPRIVILEGED_USER=builder
-
 # Check input arguments
 
 # The first argument is a local path to install into.
@@ -39,57 +37,57 @@ else
 	exit -1;
 fi
 
-# Unprivileged processes should be able to run the script
-fakechroot fakeroot debootstrap --variant=fakechroot bookworm $INSTALL_PATH $MIRROR
+# It is bettter for unprivileged processes to be able to run the script
+debootstrap bookworm $INSTALL_PATH $MIRROR
+
 # /etc/apt/sources.list does not contain deb-src entry initially
 echo "deb-src $MIRROR bookworm main" >> $INSTALL_PATH/etc/apt/sources.list
 
-fakechroot fakeroot chroot $INSTALL_PATH /bin/bash <<"EOT"
+# Needed to build packages
+mount --make-rslave --rbind /dev $INSTALL_PATH/dev
+mount --make-rslave --rbind /proc $INSTALL_PATH/proc
+
+chroot $INSTALL_PATH /bin/bash <<"EOT"
 UNPRIVILEGED_USER=builder
 
 # Update after modifying /etc/apt/sources.list
 apt-get update
 
 # Required for apt-get source
-apt-get -y install dpkg-dev devscripts
+apt-get -y install dpkg-dev devscripts locales
 
-cd /home
-mkdir ./temp_build
-cd ./temp_build
+touch /etc/default/locale
+echo LANG=en_US.UTF-8 >> /etc/default/locale
 
-apt-get source gawk
 apt-get -y build-dep bash gawk sed firefox-esr
-
-# Build packages
-cd ./gawk-*
-dpkg-buildpackage -b -uc -us
-
-
-#cd ./bash-*
-#dpkg-buildpackage -b -uc -us
-
-#cd ../firefox-esr-*
-#dpkg-buildpackage -b -uc -us
 
 # Create an unprivileged user which builds bash, gawk, sed, firefor-esr
 useradd -p $UNPRIVILEGED_USER $UNPRIVILEGED_USER
+mkdir /home/$UNPRIVILEGED_USER
+chown $UNPRIVILEGED_USER /home/$UNPRIVILEGED_USER
 EOT
 
 # Build packages as non-root
-fakechroot fakeroot chroot --userspec=$UNPRIVILEGED_USER $INSTALL_PATH /bin/bash <<"EOT"
+chroot --userspec=$UNPRIVILEGED_USER $INSTALL_PATH /bin/bash <<"EOT"
 UNPRIVILEGED_USER=builder
 
-cd /home/$UNPRIVILEGED_USER/
-apt-get source bash sed firefox-esr
+cd /home/$UNPRIVILEGED_USER
+apt-get source gawk sed bash firefox-esr
 
-cd ./sed-*
+cd /home/$UNPRIVILEGED_USER/gawk-*
+dpkg-buildpackage -b -uc -us
+
+cd /home/$UNPRIVILEGED_USER/sed-*
+dpkg-buildpackage -b -uc -us
+
+cd /home/$UNPRIVILEGED_USER/bash-*
+dpkg-buildpackage -b -uc -us
+
+cd /home/$UNPRIVILEGED_USER/firefox-esr-*
 dpkg-buildpackage -b -uc -us
 EOT
 
-#fakechroot fakeroot chroot $INSTALL_PATH /bin/bash <<"EOT"
-#UNPRIVILEGED_USER=builder
-
-#userdel $UNPRIVILEGED_USER
-#EOT
+umount -l $INSTALL_PATH/proc
+umount -l $INSTALL_PATH/dev
 
 exit 0
