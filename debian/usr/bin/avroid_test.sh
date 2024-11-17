@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+UNPRIVILEGED_USER=builder
+
 # Check input arguments
 
 # The first argument is a local path to install into.
@@ -43,6 +45,8 @@ fakechroot fakeroot debootstrap --variant=fakechroot bookworm $INSTALL_PATH $MIR
 echo "deb-src $MIRROR bookworm main" >> $INSTALL_PATH/etc/apt/sources.list
 
 fakechroot fakeroot chroot $INSTALL_PATH /bin/bash <<"EOT"
+UNPRIVILEGED_USER=builder
+
 # Update after modifying /etc/apt/sources.list
 apt-get update
 
@@ -53,21 +57,39 @@ cd /home
 mkdir ./temp_build
 cd ./temp_build
 
-apt-get source bash gawk sed firefox-esr
+apt-get source gawk
 apt-get -y build-dep bash gawk sed firefox-esr
 
 # Build packages
-cd ./bash-*
-dpkg-buildpackage -b -uc -us &
+cd ./gawk-*
+dpkg-buildpackage -b -uc -us
 
-cd ../gawk-*
-dpkg-buildpackage -b -uc -us &
 
-cd ../sed-*
-dpkg-buildpackage -b -uc -us &
+#cd ./bash-*
+#dpkg-buildpackage -b -uc -us
 
-cd ../firefox-esr-*
-dpkg-buildpackage -b -uc -us &
+#cd ../firefox-esr-*
+#dpkg-buildpackage -b -uc -us
+
+# Create an unprivileged user which builds bash, gawk, sed, firefor-esr
+useradd -p $UNPRIVILEGED_USER $UNPRIVILEGED_USER
 EOT
+
+# Build packages as non-root
+fakechroot fakeroot chroot --userspec=$UNPRIVILEGED_USER $INSTALL_PATH /bin/bash <<"EOT"
+UNPRIVILEGED_USER=builder
+
+cd /home/$UNPRIVILEGED_USER/
+apt-get source bash sed firefox-esr
+
+cd ./sed-*
+dpkg-buildpackage -b -uc -us
+EOT
+
+#fakechroot fakeroot chroot $INSTALL_PATH /bin/bash <<"EOT"
+#UNPRIVILEGED_USER=builder
+
+#userdel $UNPRIVILEGED_USER
+#EOT
 
 exit 0

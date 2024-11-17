@@ -7,8 +7,8 @@ Standards-Version: 4.0.0
 
 Package: avroid-test
 Architecture: all
-Depends: debootstrap, fakechroot, fakeroot, liblzma5 (>= 5.4), xz-utils (>= 5.4),
- libc6 (>= 2.36), libsystemd-shared (>= 252), wget, ${misc:Depends}
+Depends: debootstrap, fakechroot, fakeroot,
+ libc6 (>= 2.36), wget, ${misc:Depends}
 Description: The package debootstraps Debian Bookworm in a specified directory,
  chroots in the directory, downloads sources of bash, gawk, sed, firefox-esr
  and builds them with dependencies.
